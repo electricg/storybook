@@ -7,10 +7,10 @@ import TypeMap from './types';
 const InvalidType = () => <span>Invalid Type</span>;
 
 export default class PropForm extends Component {
-  makeChangeHandler(name, type) {
+  makeChangeHandler(groupId, name, type) {
     const { onFieldChange } = this.props;
     return value => {
-      const change = { name, type, value: value || '' };
+      const change = { groupId, name, type, value: value || '' };
 
       onFieldChange(change);
     };
@@ -22,7 +22,7 @@ export default class PropForm extends Component {
     return (
       <Form>
         {knobs.map(knob => {
-          const changeHandler = this.makeChangeHandler(knob.name, knob.type);
+          const changeHandler = this.makeChangeHandler(knob.groupId, knob.name, knob.type);
           const InputType = TypeMap[knob.type] || InvalidType;
 
           return (
@@ -41,6 +41,7 @@ PropForm.displayName = 'PropForm';
 PropForm.propTypes = {
   knobs: PropTypes.arrayOf(
     PropTypes.shape({
+      groupId: PropTypes.string,
       name: PropTypes.string,
       value: PropTypes.any,
     })

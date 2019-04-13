@@ -7,14 +7,16 @@ export default class KnobStore {
     this.callbacks = [];
   }
 
-  has(key) {
-    return this.store[key] !== undefined;
+  has(groupId, name) {
+    return this.store[groupId] && this.store[groupId][name] !== undefined;
   }
 
-  set(key, value) {
-    this.store[key] = value;
-    this.store[key].used = true;
-    this.store[key].groupId = value.groupId;
+  set(groupId, name, value) {
+    if (!this.store[groupId]) {
+      this.store[groupId] = {};
+    }
+    this.store[groupId][name] = value;
+    this.store[groupId][name].used = true;
 
     // debounce the execution of the callbacks for 50 milliseconds
     if (this.timer) {
@@ -23,8 +25,9 @@ export default class KnobStore {
     this.timer = setTimeout(callAll, 50, this.callbacks);
   }
 
-  get(key) {
-    const knob = this.store[key];
+  get(groupId, name) {
+    const properGroupId = groupId === undefined ? '' : groupId;
+    const knob = this.store[properGroupId] && this.store[properGroupId][name];
     if (knob) {
       knob.used = true;
     }
@@ -40,8 +43,10 @@ export default class KnobStore {
   }
 
   markAllUnused() {
-    Object.keys(this.store).forEach(knobName => {
-      this.store[knobName].used = false;
+    Object.keys(this.store).forEach(groupId => {
+      Object.keys(this.store[groupId]).forEach(name => {
+        this.store[groupId][name].used = false;
+      });
     });
   }
 

@@ -1,5 +1,6 @@
 import { queryFromLocation } from '@storybook/router';
 import { toId } from '@storybook/router/dist/utils';
+import get from 'lodash.get';
 
 import { Module } from '../index';
 import { PanelPositions } from './layout';
@@ -103,7 +104,7 @@ export default function({ store, navigate, location, path: initialPath, ...rest 
     getQueryParam: key => {
       const { customQueryParams } = store.getState();
       if (customQueryParams) {
-        return customQueryParams[key];
+        return get(customQueryParams, key);
       }
       return undefined;
     },

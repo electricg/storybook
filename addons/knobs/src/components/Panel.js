@@ -75,21 +75,24 @@ export default class KnobPanel extends PureComponent {
     const { api } = this.props;
 
     if (!this.options.timestamps || !timestamp || this.lastEdit <= timestamp) {
-      Object.keys(knobs).forEach(name => {
-        const knob = knobs[name];
-        // For the first time, get values from the URL and set them.
-        if (!this.loadedFromUrl) {
-          const urlValue = api.getQueryParam(`knob-${name}`);
+      Object.keys(knobs).forEach(groupId => {
+        const group = knobs[groupId];
+        Object.keys(group).forEach(name => {
+          const knob = group[name];
+          // For the first time, get values from the URL and set them.
+          if (!this.loadedFromUrl) {
+            const urlValue = api.getQueryParam([`knob-${groupId}`, name]);
 
-          // If the knob value present in url
-          if (urlValue !== undefined) {
-            const value = Types[knob.type].deserialize(urlValue);
-            knob.value = value;
-            queryParams[`knob-${name}`] = Types[knob.type].serialize(value);
+            // If the knob value present in url
+            if (urlValue !== undefined) {
+              const value = Types[knob.type].deserialize(urlValue);
+              knob.value = value;
+              queryParams[`knob-${groupId}[${name}]`] = Types[knob.type].serialize(value);
 
-            api.emit(CHANGE, knob);
+              api.emit(CHANGE, knob);
+            }
           }
-        }
+        });
       });
 
       api.setQueryParams(queryParams);
@@ -110,8 +113,10 @@ export default class KnobPanel extends PureComponent {
     const query = qs.parse(location.search, { ignoreQueryPrefix: true });
     const { knobs } = this.state;
 
-    Object.entries(knobs).forEach(([name, knob]) => {
-      query[`knob-${name}`] = Types[knob.type].serialize(knob.value);
+    Object.entries(knobs).forEach(([groupId, group]) => {
+      Object.entries(group).forEach(([name, knob]) => {
+        query[`knob-${groupId}[${name}]`] = Types[knob.type].serialize(knob.value);
+      });
     });
 
     copy(`${location.origin + location.pathname}?${qs.stringify(query, { encode: false })}`);
@@ -128,10 +133,10 @@ export default class KnobPanel extends PureComponent {
   handleChange = changedKnob => {
     this.lastEdit = getTimestamp();
     const { knobs } = this.state;
-    const { name } = changedKnob;
+    const { groupId, name } = changedKnob;
     const newKnobs = { ...knobs };
-    newKnobs[name] = {
-      ...newKnobs[name],
+    newKnobs[groupId][name] = {
+      ...newKnobs[groupId][name],
       ...changedKnob,
     };
 
@@ -151,35 +156,25 @@ export default class KnobPanel extends PureComponent {
       return null;
     }
 
-    const groups = {};
-    const groupIds = [];
+    // Always sort DEFAULT_GROUP_ID (ungrouped) tab last without changing the remaining tabs
+    const { '': other, ...sorted } = knobs;
+    if (other) {
+      sorted[''] = Object.values(other).reduce((acc, item) => {
+        acc[item.name] = {
+          ...item,
+          groupId: '',
+        };
+        return acc;
+      }, {});
+    }
 
-    const knobKeysArray = Object.keys(knobs).filter(key => knobs[key].used);
+    const knobKeysArray = Object.keys(sorted);
+    // TODO
+    // .filter(
+    //   groupId => Object.values(knobs[groupId]).filter(({ used }) => used).length
+    // );
 
-    knobKeysArray.forEach(key => {
-      const knobKeyGroupId = knobs[key].groupId || DEFAULT_GROUP_ID;
-      groupIds.push(knobKeyGroupId);
-      groups[knobKeyGroupId] = {
-        render: ({ active }) => (
-          <TabWrapper key={knobKeyGroupId} active={active}>
-            <PropForm
-              // false positive
-              // eslint-disable-next-line no-use-before-define
-              knobs={knobsArray.filter(
-                knob => (knob.groupId || DEFAULT_GROUP_ID) === knobKeyGroupId
-              )}
-              onFieldChange={this.handleChange}
-              onFieldClick={this.handleClick}
-            />
-          </TabWrapper>
-        ),
-        title: knobKeyGroupId,
-      };
-    });
-
-    const knobsArray = knobKeysArray.map(key => knobs[key]);
-
-    if (knobsArray.length === 0) {
+    if (knobKeysArray.length === 0) {
       return (
         <Placeholder>
           <Fragment>No knobs found</Fragment>
@@ -197,33 +192,30 @@ export default class KnobPanel extends PureComponent {
       );
     }
 
-    // Always sort DEFAULT_GROUP_ID (ungrouped) tab last without changing the remaining tabs
-    const sortEntries = g => {
-      const unsortedKeys = Object.keys(g);
-      if (unsortedKeys.indexOf(DEFAULT_GROUP_ID) !== -1) {
-        const sortedKeys = unsortedKeys.filter(key => key !== DEFAULT_GROUP_ID);
-        sortedKeys.push(DEFAULT_GROUP_ID);
-        return sortedKeys.map(key => [key, g[key]]);
-      }
-      return Object.entries(g);
-    };
-
-    const entries = sortEntries(groups);
-
     return (
       <Fragment>
         <PanelWrapper>
-          {entries.length > 1 ? (
+          {knobKeysArray.length > 0 && knobKeysArray[0] !== '' ? (
             <TabsState>
-              {entries.map(([k, v]) => (
-                <div id={k} key={k} title={v.title}>
-                  {v.render}
+              {knobKeysArray.map(groupId => (
+                <div
+                  id={groupId || DEFAULT_GROUP_ID}
+                  key={groupId || DEFAULT_GROUP_ID}
+                  title={groupId || DEFAULT_GROUP_ID}
+                >
+                  <TabWrapper key={groupId || DEFAULT_GROUP_ID} active={panelActive}>
+                    <PropForm
+                      knobs={Object.values(sorted[groupId])}
+                      onFieldChange={this.handleChange}
+                      onFieldClick={this.handleClick}
+                    />
+                  </TabWrapper>
                 </div>
               ))}
             </TabsState>
           ) : (
             <PropForm
-              knobs={knobsArray}
+              knobs={Object.values(sorted[''])}
               onFieldChange={this.handleChange}
               onFieldClick={this.handleClick}
             />

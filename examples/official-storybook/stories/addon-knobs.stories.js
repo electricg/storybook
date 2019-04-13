@@ -194,6 +194,16 @@ storiesOf('Addons|Knobs.withKnobs', module)
       </Fragment>
     );
   })
+  .add('test name', () => {
+    return (
+      <Fragment>
+        <div>1 {text('label1', 'Title zed', 'Foo')}</div>
+        <div>1 {text('label4', 'Another zed', 'Foo')}</div>
+        <div>1 {text('label1', 'Title other')}</div>
+        <div>2 {text('label1', 'Title textarea', 'Bar')}</div>
+      </Fragment>
+    );
+  })
   .add('complex select', () => {
     const m = select(
       'complex',

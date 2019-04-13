@@ -30,9 +30,8 @@ const debouncedResetAndForceUpdate = debounce(
 );
 
 function knobChanged(change) {
-  const { name } = change;
-  const { value } = change; // Update the related knob and it's value.
-  const knobOptions = knobStore.get(name);
+  const { name, groupId, value } = change;
+  const knobOptions = knobStore.get(groupId, name);
   knobOptions.value = value;
 
   if (!manager.options.disableDebounce) {
@@ -43,7 +42,7 @@ function knobChanged(change) {
 }
 
 function knobClicked(clicked) {
-  const knobOptions = knobStore.get(clicked.name);
+  const knobOptions = knobStore.get(clicked.groupId, clicked.name);
   knobOptions.callback();
   forceReRender();
 }
